@@ -1,6 +1,7 @@
 # ETH-sim C++ - Ethereum Price Simulator
 
 Fast dual-server price feed simulator for testing MEV bots and liquidation strategies.
+Includes interactive visualizer + starter (AI) testing scripts. 
 
 ## Overview
 
