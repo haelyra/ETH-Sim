@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETH-sim Dual Feed Visualizer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f1114;
+            color: #e5e7eb;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: left;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            font-weight: 600;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .dashboard {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .card {
+            background: #1c2026;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+
+        .card.price-card {
+            padding: 20px;
+        }
+
+        .card h3 {
+            font-size: 0.85rem;
+            color: #9ca3af;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .card .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #e5e7eb;
+        }
+
+        .card.price-card .value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .price-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .price-card {
+            padding: 14px !important;
+        }
+
+        .spread-updates-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .status-card {
+            padding: 8px 12px !important;
+        }
+
+        .status-card h3 {
+            font-size: 0.7rem;
+            margin-bottom: 6px;
+        }
+
+        .status-card .value {
+            font-size: 0.85rem !important;
+        }
+
+        .card.dex .value {
+            color: #3b82f6;
+        }
+
+        .card.oracle .value {
+            color: #f59e0b;
+        }
+
+        .card .change {
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        .change.positive {
+            color: #10b981;
+        }
+
+        .change.negative {
+            color: #ef4444;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status.connected {
+            background: #10b981;
+            color: white;
+        }
+
+        .status.disconnected {
+            background: #ef4444;
+            color: white;
+        }
+
+        .chart-container {
+            background: #1c2026;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 450px;
+        }
+
+        .controls {
+            background: #1c2026;
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .controls h3 {
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+            color: #e5e7eb;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #374151;
+            color: #6b7280;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .stats-card {
+            background: #1c2026;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .stats-card h3 {
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+            color: #e5e7eb;
+            border-bottom: 2px solid #374151;
+            padding-bottom: 10px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #374151;
+        }
+
+        .stat-label {
+            color: #9ca3af;
+            font-size: 0.9rem;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #e5e7eb;
+        }
+
+        .footer {
+            text-align: center;
+            color: #9ca3af;
+            opacity: 0.8;
+            margin-top: 30px;
+            font-size: 0.9rem;
+        }
+
+        .footer code {
+            background: #1c2026;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #60a5fa;
+        }
+
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            margin-right: 20px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 3px;
+            margin-right: 8px;
+            border-radius: 2px;
+        }
+
+        .spread-indicator {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #8b5cf6;
+        }
+
+        @media (max-width: 1200px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+
+            .price-grid,
+            .spread-updates-grid,
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 968px) {
+            h1 {
+                font-size: 1.3rem;
+            }
+
+            .chart-wrapper {
+                height: 350px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ETH-sim Dual Feed Visualizer</h1>
+        </header>
+
+        <div class="main-layout">
+            <div class="main-content">
+                <div class="chart-container">
+                    <h3 style="margin-bottom: 15px; color: #e5e7eb;">
+                        Price Comparison
+                        <div style="float: right; font-size: 0.9rem; font-weight: normal; color: #9ca3af;">
+                            <span class="legend-item">
+                                <span class="legend-color" style="background: #3b82f6;"></span>
+                                DEX (High Freq)
+                            </span>
+                            <span class="legend-item">
+                                <span class="legend-color" style="background: #f59e0b;"></span>
+                                Oracle (Deviation)
+                            </span>
+                        </div>
+                    </h3>
+                    <div class="chart-wrapper">
+                        <canvas id="priceChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <h3>Controls</h3>
+                    <div class="button-group">
+                        <button id="connect-btn" onclick="connectBoth()">Connect Both</button>
+                        <button id="disconnect-btn" onclick="disconnectBoth()" disabled>Disconnect Both</button>
+                        <button onclick="clearChart()">Clear Chart</button>
+                        <button onclick="downloadData()">Download Data</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar">
+                <div class="dashboard">
+                    <div class="price-grid">
+                        <div class="card dex price-card">
+                            <h3>DEX Price</h3>
+                            <div class="value" id="dex-price">$0.00</div>
+                            <div class="change" id="dex-change">--</div>
+                        </div>
+
+                        <div class="card oracle price-card">
+                            <h3>Oracle Price</h3>
+                            <div class="value" id="oracle-price">$0.00</div>
+                            <div class="change" id="oracle-change">--</div>
+                        </div>
+                    </div>
+
+                    <div class="spread-updates-grid">
+                        <div class="card">
+                            <h3>Price Spread</h3>
+                            <div class="spread-indicator" id="spread">$0.00</div>
+                            <div class="change" id="spread-pct">0.00%</div>
+                        </div>
+
+                        <div class="card">
+                            <h3>Total Updates</h3>
+                            <div class="value" id="total-updates">0</div>
+                        </div>
+                    </div>
+
+                    <div class="status-grid">
+                        <div class="card status-card">
+                            <h3>DEX Status</h3>
+                            <div class="value">
+                                <span id="dex-status" class="status disconnected">Disconnected</span>
+                            </div>
+                        </div>
+
+                        <div class="card status-card">
+                            <h3>Oracle Status</h3>
+                            <div class="value">
+                                <span id="oracle-status" class="status disconnected">Disconnected</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stats-card">
+                        <h3>🔵 DEX Feed Statistics</h3>
+                        <div class="stat-row">
+                            <span class="stat-label">Updates:</span>
+                            <span class="stat-value" id="dex-updates">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Last Update:</span>
+                            <span class="stat-value" id="dex-last">Never</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Avg Rate:</span>
+                            <span class="stat-value" id="dex-rate">-- ms</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Stale:</span>
+                            <span class="stat-value" id="dex-stale">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Sequence:</span>
+                            <span class="stat-value" id="dex-seq">--</span>
+                        </div>
+                    </div>
+
+                    <div class="stats-card">
+                        <h3>🟠 Oracle Feed Statistics</h3>
+                        <div class="stat-row">
+                            <span class="stat-label">Updates:</span>
+                            <span class="stat-value" id="oracle-updates">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Last Update:</span>
+                            <span class="stat-value" id="oracle-last">Never</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Avg Rate:</span>
+                            <span class="stat-value" id="oracle-rate">-- ms</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Stale:</span>
+                            <span class="stat-value" id="oracle-stale">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Sequence:</span>
+                            <span class="stat-value" id="oracle-seq">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer">
+            <p>ETH-sim Dual Visualizer</p>
+            <p>DEX: <code>ws://localhost:9101/ws/ticks</code> | Oracle: <code>ws://localhost:9102/ws/prices</code></p>
+        </footer>
+    </div>
+
+    <script>
+        // Configuration
+        const DEX_WS_URL = 'ws://localhost:9101/ws/ticks';
+        const ORACLE_WS_URL = 'ws://localhost:9102/ws/prices';
+        const MAX_DATA_POINTS = 200;
+
+        // State
+        let dexWs = null;
+        let oracleWs = null;
+        let chart = null;
+
+        // Data
+        let dexData = [];
+        let oracleData = [];
+        let timeLabels = [];
+
+        // Stats
+        let dexStats = {
+            count: 0,
+            stale: 0,
+            lastTs: null,
+            lastSeq: null,
+            intervals: []
+        };
+
+        let oracleStats = {
+            count: 0,
+            stale: 0,
+            lastTs: null,
+            lastSeq: null,
+            intervals: []
+        };
+
+        let dexStartPrice = null;
+        let oracleStartPrice = null;
+
+        // Initialize chart
+        function initChart() {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timeLabels,
+                    datasets: [
+                        {
+                            label: 'DEX',
+                            data: dexData,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: false,
+                            pointRadius: 2,
+                            pointHoverRadius: 6,
+                            spanGaps: true,
+                        },
+                        {
+                            label: 'Oracle (LINK, scaled by 10^8)',
+                            data: oracleData,
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                            borderWidth: 3,
+                            tension: 0.1,
+                            fill: false,
+                            pointRadius: 4,
+                            pointHoverRadius: 8,
+                            spanGaps: true,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index',
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Time',
+                                color: '#9ca3af'
+                            },
+                            ticks: {
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 15,
+                                color: '#9ca3af'
+                            },
+                            grid: {
+                                color: 'rgba(156, 163, 175, 0.1)'
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Price (USD)',
+                                color: '#9ca3af'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toFixed(2);
+                                },
+                                color: '#9ca3af'
+                            },
+                            grid: {
+                                color: 'rgba(156, 163, 175, 0.1)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#e5e7eb'
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(28, 32, 38, 0.95)',
+                            titleColor: '#e5e7eb',
+                            bodyColor: '#e5e7eb',
+                            borderColor: '#374151',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': $' + context.parsed.y.toFixed(2);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Connect to DEX WebSocket
+        function connectDex() {
+            if (dexWs && dexWs.readyState === WebSocket.OPEN) {
+                return;
+            }
+
+            console.log('Connecting to DEX:', DEX_WS_URL);
+            dexWs = new WebSocket(DEX_WS_URL);
+
+            dexWs.onopen = () => {
+                console.log('Connected to DEX feed');
+                updateDexStatus(true);
+            };
+
+            dexWs.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    console.log('DEX message received:', message);
+                    if (message.type === 'price' && message.source === 'dex') {
+                        handleDexPrice(message);
+                    } else if (message.type === 'subscription') {
+                        console.log('DEX subscription:', message.status);
+                    }
+                } catch (e) {
+                    console.error('Failed to parse DEX message:', e, event.data);
+                }
+            };
+
+            dexWs.onerror = (error) => {
+                console.error('DEX WebSocket error:', error);
+            };
+
+            dexWs.onclose = () => {
+                console.log('Disconnected from DEX feed');
+                updateDexStatus(false);
+            };
+        }
+
+        // Connect to Oracle WebSocket
+        function connectOracle() {
+            if (oracleWs && oracleWs.readyState === WebSocket.OPEN) {
+                return;
+            }
+
+            console.log('Connecting to Oracle:', ORACLE_WS_URL);
+            oracleWs = new WebSocket(ORACLE_WS_URL);
+
+            oracleWs.onopen = () => {
+                console.log('Connected to Oracle feed');
+                updateOracleStatus(true);
+                
+                // Fetch initial snapshot to get starting price
+                fetch('http://localhost:9102/oracle/snapshot')
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Oracle snapshot:', data);
+                        if (data.prices && data.prices.length > 0) {
+                            const initialPrice = data.prices[0];
+                            // Add initial point to chart
+                            handleOraclePrice(initialPrice);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Failed to fetch oracle snapshot:', error);
+                    });
+            };
+
+            oracleWs.onmessage = (event) => {
+                try {
+                    const message = JSON.parse(event.data);
+                    console.log('Oracle message received:', message);
+                    if (message.type === 'price' && message.source === 'chainlink') {
+                        handleOraclePrice(message);
+                    } else if (message.type === 'subscription') {
+                        console.log('Oracle subscription:', message.status);
+                    }
+                } catch (e) {
+                    console.error('Failed to parse Oracle message:', e, event.data);
+                }
+            };
+
+            oracleWs.onerror = (error) => {
+                console.error('Oracle WebSocket error:', error);
+            };
+
+            oracleWs.onclose = () => {
+                console.log('Disconnected from Oracle feed');
+                updateOracleStatus(false);
+            };
+        }
+
+        // Connect to both
+        function connectBoth() {
+            connectDex();
+            connectOracle();
+            document.getElementById('connect-btn').disabled = true;
+            document.getElementById('disconnect-btn').disabled = false;
+        }
+
+        // Disconnect from both
+        function disconnectBoth() {
+            if (dexWs) {
+                dexWs.close();
+                dexWs = null;
+            }
+            if (oracleWs) {
+                oracleWs.close();
+                oracleWs = null;
+            }
+            document.getElementById('connect-btn').disabled = false;
+            document.getElementById('disconnect-btn').disabled = true;
+        }
+
+        // Handle DEX price update
+        function handleDexPrice(tick) {
+            const price = tick.price;
+            const timestamp = new Date(tick.ts);
+            const now = Date.now();
+
+            // Update stats
+            dexStats.count++;
+            if (tick.stale) dexStats.stale++;
+            dexStats.lastSeq = tick.src_seq;
+
+            if (dexStats.lastTs) {
+                const interval = now - dexStats.lastTs;
+                dexStats.intervals.push(interval);
+                if (dexStats.intervals.length > 100) dexStats.intervals.shift();
+            }
+            dexStats.lastTs = now;
+
+            // Update display
+            document.getElementById('dex-price').textContent = '$' + price.toFixed(2);
+            document.getElementById('dex-updates').textContent = dexStats.count;
+            document.getElementById('dex-last').textContent = timestamp.toLocaleTimeString();
+            document.getElementById('dex-stale').textContent = dexStats.stale;
+            document.getElementById('dex-seq').textContent = tick.src_seq;
+
+            if (dexStats.intervals.length > 0) {
+                const avg = dexStats.intervals.reduce((a, b) => a + b, 0) / dexStats.intervals.length;
+                document.getElementById('dex-rate').textContent = avg.toFixed(0) + ' ms';
+            }
+
+            // Calculate change
+            if (dexStartPrice === null) dexStartPrice = price;
+            const change = ((price - dexStartPrice) / dexStartPrice) * 100;
+            const changeEl = document.getElementById('dex-change');
+            changeEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
+            changeEl.className = 'change ' + (change >= 0 ? 'positive' : 'negative');
+
+            // Add to chart
+            addDataPoint(timestamp, price, null);
+            updateSpread();
+            updateTotalCount();
+        }
+
+        // Handle Oracle price update
+        function handleOraclePrice(tick) {
+            const price = tick.price;
+            const timestamp = new Date(tick.ts);
+            const now = Date.now();
+
+            // Update stats
+            oracleStats.count++;
+            if (tick.stale) oracleStats.stale++;
+            oracleStats.lastSeq = tick.src_seq;
+
+            if (oracleStats.lastTs) {
+                const interval = now - oracleStats.lastTs;
+                oracleStats.intervals.push(interval);
+                if (oracleStats.intervals.length > 100) oracleStats.intervals.shift();
+            }
+            oracleStats.lastTs = now;
+
+            // Update display
+            document.getElementById('oracle-price').textContent = '$' + price.toFixed(2);
+            document.getElementById('oracle-updates').textContent = oracleStats.count;
+            document.getElementById('oracle-last').textContent = timestamp.toLocaleTimeString();
+            document.getElementById('oracle-stale').textContent = oracleStats.stale;
+            document.getElementById('oracle-seq').textContent = tick.src_seq;
+
+            if (oracleStats.intervals.length > 0) {
+                const avg = oracleStats.intervals.reduce((a, b) => a + b, 0) / oracleStats.intervals.length;
+                document.getElementById('oracle-rate').textContent = (avg / 1000).toFixed(1) + ' s';
+            }
+
+            // Calculate change
+            if (oracleStartPrice === null) oracleStartPrice = price;
+            const change = ((price - oracleStartPrice) / oracleStartPrice) * 100;
+            const changeEl = document.getElementById('oracle-change');
+            changeEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
+            changeEl.className = 'change ' + (change >= 0 ? 'positive' : 'negative');
+
+            // Add to chart
+            addDataPoint(timestamp, null, price);
+            updateSpread();
+            updateTotalCount();
+        }
+
+        // Add data point to chart
+        function addDataPoint(timestamp, dexPrice, oraclePrice) {
+            const timeStr = timestamp.toLocaleTimeString();
+
+            // Find or add time label
+            let index = timeLabels.indexOf(timeStr);
+            if (index === -1) {
+                timeLabels.push(timeStr);
+                dexData.push(dexPrice);
+                oracleData.push(oraclePrice);
+
+                // Keep only last MAX_DATA_POINTS
+                if (timeLabels.length > MAX_DATA_POINTS) {
+                    timeLabels.shift();
+                    dexData.shift();
+                    oracleData.shift();
+                }
+            } else {
+                // Update existing point
+                if (dexPrice !== null) dexData[index] = dexPrice;
+                if (oraclePrice !== null) oracleData[index] = oraclePrice;
+            }
+
+            chart.update('none');
+        }
+
+        // Update spread indicator
+        function updateSpread() {
+            const dexPrice = dexData[dexData.length - 1];
+            const oraclePrice = oracleData[oracleData.length - 1];
+
+            if (dexPrice && oraclePrice) {
+                const spread = Math.abs(dexPrice - oraclePrice);
+                const spreadPct = (spread / oraclePrice) * 100;
+
+                document.getElementById('spread').textContent = '$' + spread.toFixed(2);
+                document.getElementById('spread-pct').textContent = spreadPct.toFixed(3) + '%';
+            }
+        }
+
+        // Update total count
+        function updateTotalCount() {
+            document.getElementById('total-updates').textContent = dexStats.count + oracleStats.count;
+        }
+
+        // Update status displays
+        function updateDexStatus(connected) {
+            const statusEl = document.getElementById('dex-status');
+            statusEl.textContent = connected ? 'Connected' : 'Disconnected';
+            statusEl.className = 'status ' + (connected ? 'connected' : 'disconnected');
+        }
+
+        function updateOracleStatus(connected) {
+            const statusEl = document.getElementById('oracle-status');
+            statusEl.textContent = connected ? 'Connected' : 'Disconnected';
+            statusEl.className = 'status ' + (connected ? 'connected' : 'disconnected');
+        }
+
+        // Clear chart and stats
+        function clearChart() {
+            dexData = [];
+            oracleData = [];
+            timeLabels = [];
+            dexStats = { count: 0, stale: 0, lastTs: null, lastSeq: null, intervals: [] };
+            oracleStats = { count: 0, stale: 0, lastTs: null, lastSeq: null, intervals: [] };
+            dexStartPrice = null;
+            oracleStartPrice = null;
+
+            // Reset displays
+            document.getElementById('dex-price').textContent = '$0.00';
+            document.getElementById('oracle-price').textContent = '$0.00';
+            document.getElementById('dex-change').textContent = '--';
+            document.getElementById('oracle-change').textContent = '--';
+            document.getElementById('spread').textContent = '$0.00';
+            document.getElementById('spread-pct').textContent = '0.00%';
+            document.getElementById('total-updates').textContent = '0';
+
+            document.getElementById('dex-updates').textContent = '0';
+            document.getElementById('dex-last').textContent = 'Never';
+            document.getElementById('dex-rate').textContent = '-- ms';
+            document.getElementById('dex-stale').textContent = '0';
+            document.getElementById('dex-seq').textContent = '--';
+
+            document.getElementById('oracle-updates').textContent = '0';
+            document.getElementById('oracle-last').textContent = 'Never';
+            document.getElementById('oracle-rate').textContent = '-- ms';
+            document.getElementById('oracle-stale').textContent = '0';
+            document.getElementById('oracle-seq').textContent = '--';
+
+            chart.update();
+        }
+
+        // Download data as CSV
+        function downloadData() {
+            if (timeLabels.length === 0) {
+                alert('No data to download');
+                return;
+            }
+
+            let csv = 'Time,DEX Price,Oracle Price,Spread\n';
+            for (let i = 0; i < timeLabels.length; i++) {
+                const dex = dexData[i] || '';
+                const oracle = oracleData[i] || '';
+                const spread = (dex && oracle) ? Math.abs(dex - oracle) : '';
+                csv += `${timeLabels[i]},${dex},${oracle},${spread}\n`;
+            }
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'eth-sim-dual-prices-' + new Date().toISOString() + '.csv';
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Initialize on load
+        window.addEventListener('load', () => {
+            initChart();
+            setTimeout(() => connectBoth(), 500);
+        });
+
+        // Cleanup on unload
+        window.addEventListener('beforeunload', () => {
+            disconnectBoth();
+        });
+    </script>
+</body>
+</html>

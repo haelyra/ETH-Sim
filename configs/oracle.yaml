@@ -1,0 +1,49 @@
+# Oracle sim confgs
+pairs:
+  - "ETH/USD"
+
+# price model: gbm or jump
+price_model: "gbm"
+
+price_start: 3500.0
+
+#  GBM params
+gbm_mu: 0.0 # Annual drift
+gbm_sigma: 2.0 # Annual volatility (200% for demo visualization with fast updates, exaggerated for visualization)
+
+# Jump diffusion params
+jump_lambda: 0.02 # jump events/ hour
+jump_mu: -0.02  # mean jump size %
+jump_sigma: 0.08  # jump size std dev
+
+seed: 42
+
+# server bindings
+ws_bind: "127.0.0.1:9002"
+http_bind: "127.0.0.1:9102"
+
+cors_allow_origins:
+  - "*"
+
+oracle_tick_ms:
+  min: 1000
+  max: 3600
+
+# triggers update if price moves >= this
+oracle_deviation_bps: 5 #0.05%
+
+# heartbeat interval (triggers update even if no deviation)
+oracle_heartbeat_ms: 3600000  # 1 hr
+
+# ws send jitter 
+oracle_ws_jitter_ms:
+  min: 0
+  max: 120
+
+# fault injection probs
+oracle_p_drop: 0.01
+oracle_p_dup: 0.01
+oracle_p_reorder: 0.01
+
+# staleness threshold
+oracle_stale_after_ms: 2000

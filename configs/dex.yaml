@@ -1,0 +1,59 @@
+# DEX sim configs
+pairs:
+  - "ETH/USD"
+
+# price model: gbm or jump
+price_model: "gbm"
+
+price_start: 3500.0
+
+#  GBM params
+gbm_mu: 0.0        # Annual drift
+gbm_sigma: 2.0     # Annual volatility (200% - for demo visualization with fast updates)
+
+# Jump diffusion params
+jump_lambda: 0.1  # jump events/ hour
+jump_mu: -0.02     # mean jump size %
+jump_sigma: 0.08   # jump size std dev
+
+seed: 42
+
+# server bindings
+ws_bind: "127.0.0.1:9001"
+http_bind: "127.0.0.1:9101"
+
+cors_allow_origins:
+  - "*"
+
+# tick cadence range
+dex_tick_ms:
+  min: 10
+  max: 100
+
+# ws send jitter
+dex_ws_jitter_ms:
+  min: 0
+  max: 30
+
+# per-message path latency
+dex_latency_ms:
+  min: 8
+  max: 45
+
+# fault injection probs
+dex_p_drop: 0.02
+dex_p_dup: 0.02
+dex_p_reorder: 0.02
+
+# burst mode settings
+dex_burst_mode: true
+dex_burst_on_ms: 1500
+dex_burst_off_ms: 800
+
+# disconnect windows [down_ms, up_ms], cycles thru these
+dex_disconnect_windows_ms:
+  - 5000
+  - 3000
+
+# staleness thresh
+dex_stale_after_ms: 250

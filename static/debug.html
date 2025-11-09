@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Debug</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 { color: #4ec9b0; }
+        h2 { color: #dcdcaa; }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .connected { background: #0e639c; }
+        .disconnected { background: #a31515; }
+        .message {
+            background: #252526;
+            border: 1px solid #3c3c3c;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 3px;
+            font-size: 12px;
+            word-wrap: break-word;
+        }
+        .dex { border-left: 3px solid #3b82f6; }
+        .oracle { border-left: 3px solid #f59e0b; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #0e639c;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover { background: #1177bb; }
+        button:disabled { background: #666; cursor: not-allowed; }
+        .log {
+            max-height: 400px;
+            overflow-y: auto;
+            background: #1e1e1e;
+            border: 1px solid #3c3c3c;
+            padding: 10px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 WebSocket Debug Tool</h1>
+
+        <h2>DEX Feed (ws://localhost:9101/ws/ticks)</h2>
+        <div id="dex-status" class="status disconnected">Disconnected</div>
+        <button id="dex-connect" onclick="connectDex()">Connect DEX</button>
+        <button id="dex-disconnect" onclick="disconnectDex()" disabled>Disconnect DEX</button>
+        <div class="log" id="dex-log"></div>
+
+        <h2>Oracle Feed (ws://localhost:9102/ws/prices)</h2>
+        <div id="oracle-status" class="status disconnected">Disconnected</div>
+        <button id="oracle-connect" onclick="connectOracle()">Connect Oracle</button>
+        <button id="oracle-disconnect" onclick="disconnectOracle()" disabled>Disconnect Oracle</button>
+        <div class="log" id="oracle-log"></div>
+
+        <button onclick="clearLogs()">Clear Logs</button>
+    </div>
+
+    <script>
+        let dexWs = null;
+        let oracleWs = null;
+        let dexCount = 0;
+        let oracleCount = 0;
+
+        function log(type, message) {
+            const logEl = document.getElementById(type + '-log');
+            const msgEl = document.createElement('div');
+            msgEl.className = 'message ' + type;
+            msgEl.textContent = new Date().toLocaleTimeString() + ' - ' + message;
+            logEl.insertBefore(msgEl, logEl.firstChild);
+
+            // Keep only last 50 messages
+            while (logEl.children.length > 50) {
+                logEl.removeChild(logEl.lastChild);
+            }
+        }
+
+        function connectDex() {
+            if (dexWs) {
+                log('dex', 'Already connected or connecting');
+                return;
+            }
+
+            const url = 'ws://localhost:9101/ws/ticks';
+            log('dex', 'Connecting to ' + url + '...');
+
+            try {
+                dexWs = new WebSocket(url);
+
+                dexWs.onopen = () => {
+                    log('dex', '✅ Connected!');
+                    document.getElementById('dex-status').textContent = 'Connected';
+                    document.getElementById('dex-status').className = 'status connected';
+                    document.getElementById('dex-connect').disabled = true;
+                    document.getElementById('dex-disconnect').disabled = false;
+                };
+
+                dexWs.onmessage = (event) => {
+                    try {
+                        dexCount++;
+                        const msg = JSON.parse(event.data);
+                        log('dex', `[${dexCount}] ${JSON.stringify(msg)}`);
+                    } catch (e) {
+                        log('dex', 'Parse error: ' + e.message + ' | Raw: ' + event.data);
+                    }
+                };
+
+                dexWs.onerror = (error) => {
+                    log('dex', '❌ Error: ' + error);
+                };
+
+                dexWs.onclose = () => {
+                    log('dex', 'Disconnected');
+                    document.getElementById('dex-status').textContent = 'Disconnected';
+                    document.getElementById('dex-status').className = 'status disconnected';
+                    document.getElementById('dex-connect').disabled = false;
+                    document.getElementById('dex-disconnect').disabled = true;
+                    dexWs = null;
+                };
+            } catch (e) {
+                log('dex', '❌ Failed to connect: ' + e.message);
+            }
+        }
+
+        function disconnectDex() {
+            if (dexWs) {
+                dexWs.close();
+                dexWs = null;
+            }
+        }
+
+        function connectOracle() {
+            if (oracleWs) {
+                log('oracle', 'Already connected or connecting');
+                return;
+            }
+
+            const url = 'ws://localhost:9102/ws/prices';
+            log('oracle', 'Connecting to ' + url + '...');
+
+            try {
+                oracleWs = new WebSocket(url);
+
+                oracleWs.onopen = () => {
+                    log('oracle', '✅ Connected!');
+                    document.getElementById('oracle-status').textContent = 'Connected';
+                    document.getElementById('oracle-status').className = 'status connected';
+                    document.getElementById('oracle-connect').disabled = true;
+                    document.getElementById('oracle-disconnect').disabled = false;
+                };
+
+                oracleWs.onmessage = (event) => {
+                    try {
+                        oracleCount++;
+                        const msg = JSON.parse(event.data);
+                        log('oracle', `[${oracleCount}] ${JSON.stringify(msg)}`);
+                    } catch (e) {
+                        log('oracle', 'Parse error: ' + e.message + ' | Raw: ' + event.data);
+                    }
+                };
+
+                oracleWs.onerror = (error) => {
+                    log('oracle', '❌ Error: ' + error);
+                };
+
+                oracleWs.onclose = () => {
+                    log('oracle', 'Disconnected');
+                    document.getElementById('oracle-status').textContent = 'Disconnected';
+                    document.getElementById('oracle-status').className = 'status disconnected';
+                    document.getElementById('oracle-connect').disabled = false;
+                    document.getElementById('oracle-disconnect').disabled = true;
+                    oracleWs = null;
+                };
+            } catch (e) {
+                log('oracle', '❌ Failed to connect: ' + e.message);
+            }
+        }
+
+        function disconnectOracle() {
+            if (oracleWs) {
+                oracleWs.close();
+                oracleWs = null;
+            }
+        }
+
+        function clearLogs() {
+            document.getElementById('dex-log').innerHTML = '';
+            document.getElementById('oracle-log').innerHTML = '';
+            dexCount = 0;
+            oracleCount = 0;
+        }
+
+        // Auto-connect on load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                connectDex();
+                connectOracle();
+            }, 500);
+        });
+    </script>
+</body>
+</html>
